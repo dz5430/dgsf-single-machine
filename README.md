@@ -93,7 +93,7 @@ Permutation-based feature importance analysis for the DeepSets model.
 Large datasets, trained models, and experiment outputs are available here:
 
 **Google Drive:**  
-*(add your link here)*
+[Download datasets and trained models](https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP)
 
 Download the files and place them in the corresponding folders:
 
