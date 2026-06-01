@@ -76,6 +76,12 @@ Compute instance characteristics:
 python Code/1_data_processing/SMS_instance_classification.py --input Data/Raw_file.xlsx --output Data/Instances_characteristics.xlsx
 ```
 
+Evaluate dispatching-rule baselines, including the release-date-aware PRTT rule:
+
+```powershell
+python Code/3_evaluation/Dispatching_heuristics.py --input Data/Updated_file.xlsx --output Results/Dispatching_heuristics.xlsx
+```
+
 Generate reference solutions with the time-indexed MIP:
 
 ```powershell

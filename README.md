@@ -79,6 +79,9 @@ Generates features required for training the ML model.
 **Schedule_evaluation.py**  
 Computes evaluation metrics including optimality gap and Spearman's rank correlation.
 
+**Dispatching_heuristics.py**  
+Computes EDD, SPT, LSF, ATC, and PRTT dispatching-rule baselines.
+
 **Feature Importance.py**  
 Permutation-based feature importance analysis for the DeepSets model.
 
