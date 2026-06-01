@@ -1,10 +1,21 @@
 __pycache__/
 *.pyc
+*.pyo
 
 .venv/
 venv/
 
-Data/
-Results/
+*.pth
+*.xlsx
+*.csv
+*.log
 
 .DS_Store
+
+Data/*
+Results/*
+
+!Data/
+!Results/
+!Data/README.md
+!Results/README.md

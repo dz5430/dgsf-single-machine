@@ -10,15 +10,25 @@ from sklearn.model_selection import train_test_split
 from scipy.stats import spearmanr 
 import math  
 import random
+import argparse
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+parser = argparse.ArgumentParser(description="Train the DeepSets scheduling model.")
+parser.add_argument("--input", default="Training_file.csv", help="Training CSV file.")
+parser.add_argument("--output-model", default="Model_name.pth", help="Output PyTorch checkpoint.")
+parser.add_argument("--loss-plot", default="loss_curves_0max_40tau_avg.png", help="Output loss-curve PNG.")
+parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"], help="Training device.")
+parser.add_argument("--epochs", type=int, default=1000, help="Number of training epochs.")
+parser.add_argument("--batch-size", type=int, default=64, help="Training batch size.")
+args = parser.parse_args()
 
 # =============================
 # Load and process data
 # =============================
 # ---- Load dataset (solved optimal schedules + features) ----
-df = pd.read_csv("Training_file.csv") # Update with own file
+df = pd.read_csv(args.input)
 
 # Selected input features 
 input_feature_cols = [
@@ -416,21 +426,23 @@ test_dataset  = ScheduleDataset(test_df,  input_feature_cols)
 
 # Tweak num_workers/pin_memory to your machine
 train_loader = DataLoader(
-    train_dataset, batch_size=64, shuffle=True,
+    train_dataset, batch_size=args.batch_size, shuffle=True,
     collate_fn=collate_fn, num_workers=0, pin_memory=True
 )
 test_loader = DataLoader(
-    test_dataset, batch_size=64, shuffle=False,
+    test_dataset, batch_size=args.batch_size, shuffle=False,
     collate_fn=collate_fn, num_workers=0, pin_memory=True
 )
 
 # =============================
 # Model + Optimizer
 # =============================
-device = torch.device("cuda")
+if args.device == "cuda" and not torch.cuda.is_available():
+    raise RuntimeError("CUDA was requested but is not available. Use --device cpu.")
+device = torch.device(args.device)
 model = DeepSetsRanker(input_size=input_size).to(device)
 
-max_epochs = 1000
+max_epochs = args.epochs
 optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs*0.8)
 
@@ -506,13 +518,13 @@ def plot_loss_curves(train_losses, val_losses, best_epoch, save_path='loss_curve
     print(f"Loss curve saved to {save_path}")
 
 plot_loss_curves(train_loss_history, val_loss_history, best_epoch,
-                 save_path='loss_curves_0max_40tau_avg.png')
+                 save_path=args.loss_plot)
 
 # =============================
 # Save best model
 # =============================
 if best_model_state is not None:
-    filename = "Model_name.pth" # Update with own file
+    filename = args.output_model
     torch.save(best_model_state, filename)
     print(f"Best model saved to {filename} (epoch {best_epoch})")
 else:

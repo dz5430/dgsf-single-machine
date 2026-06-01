@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import ast
+import argparse
 
 def _rank01(x):
     I = len(x)
@@ -115,9 +116,9 @@ def process_excel_file(input_file, output_file):
     return out_df
 
 if __name__ == "__main__":
-    # Process your existing file
-    input_file = "Raw_file.xlsx" # Update with own file
-    output_file = "Updated_file.xlsx" # Update with own file
-    
-    # Process the file
-    process_excel_file(input_file, output_file)
+    parser = argparse.ArgumentParser(description="Generate DGSF input features.")
+    parser.add_argument("--input", default="Raw_file.xlsx", help="Input Excel file.")
+    parser.add_argument("--output", default="Updated_file.xlsx", help="Output Excel file.")
+    args = parser.parse_args()
+
+    process_excel_file(args.input, args.output)

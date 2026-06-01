@@ -4,10 +4,16 @@ import numpy as np
 import pyomo.environ as pyo
 import ast
 import time
+import argparse
 from Single_machine_discrete_time import time_indexed_single_machine_model
 
-# Load the original file with fixed number of tasks
-df = pd.read_excel('Updated_file.xlsx') # Update with own file
+parser = argparse.ArgumentParser(description="Solve reference schedules with the time-indexed MIP.")
+parser.add_argument("--input", default="Updated_file.xlsx", help="Input Excel file.")
+parser.add_argument("--output", default="Updated_file.xlsx", help="Output Excel file.")
+parser.add_argument("--solver", default="gurobi", help="Pyomo solver name.")
+args = parser.parse_args()
+
+df = pd.read_excel(args.input)
 
 rank_vectors = []
 start_time_vectors = []
@@ -36,7 +42,7 @@ for idx, row in df.iterrows():
         T = round(1.1 * sum(param_data[b]["tau"] for b in param_data))
 
         model = time_indexed_single_machine_model(param_data, T)
-        solver = pyo.SolverFactory('gurobi')
+        solver = pyo.SolverFactory(args.solver)
 
         start_time = time.time()
         result = solver.solve(model, tee=True)
@@ -81,4 +87,4 @@ df["rank_vector_dtime"] = [str(vec) for vec in rank_vectors]
 df["start_times_dtime"] = [str(vec) for vec in start_time_vectors]
 df["solve_time_dtime"] = solve_times
 df["tardiness_dtime"] = tardiness_values
-df.to_excel('Updated_file.xlsx', index=False) # Update with own file
+df.to_excel(args.output, index=False)

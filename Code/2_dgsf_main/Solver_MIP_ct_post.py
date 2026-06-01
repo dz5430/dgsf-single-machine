@@ -4,6 +4,7 @@ import numpy as np
 import pyomo.environ as pyo
 import ast
 import time
+import argparse
 from MIP_ContTime_Post_Tight import single_machine_ct_post_tight # returns (model, rank_idx, ml_order)
 
 INPUT_XLSX = "Post_ML_file.xlsx" # Update with own file
@@ -19,7 +20,15 @@ solve_times = []
 tardiness_values = []
 termination_conditions = []
 
-df = pd.read_excel(INPUT_XLSX)
+parser = argparse.ArgumentParser(description="Run continuous-time MIP post-processing.")
+parser.add_argument("--input", default=INPUT_XLSX, help="Input Excel file.")
+parser.add_argument("--output", default=OUTPUT_XLSX, help="Output Excel file.")
+parser.add_argument("--time-limit", type=float, default=TIME_LIMIT_SEC, help="Solver time limit in seconds.")
+parser.add_argument("--solver", default="gurobi", help="Pyomo solver name.")
+parser.add_argument("--quiet", action="store_true", help="Suppress solver log output.")
+args = parser.parse_args()
+
+df = pd.read_excel(args.input)
 
 for k, (idx, row) in enumerate(df.iterrows(), start=1):
     print(f"🔄 Solving instance {k}/{len(df)} (row {idx})...")
@@ -44,11 +53,11 @@ for k, (idx, row) in enumerate(df.iterrows(), start=1):
         model, _, _ = single_machine_ct_post_tight(param_data, predicted_ranks)
 
         # Solve with time limit
-        solver = pyo.SolverFactory("gurobi")
-        solver.options["TimeLimit"] = TIME_LIMIT_SEC
+        solver = pyo.SolverFactory(args.solver)
+        solver.options["TimeLimit"] = args.time_limit
 
         t0 = time.time()
-        result = solver.solve(model, tee=PRINT_SOLVER_LOG, warmstart=True)
+        result = solver.solve(model, tee=(PRINT_SOLVER_LOG and not args.quiet), warmstart=True)
         elapsed_time = time.time() - t0
         solve_times.append(elapsed_time)
 
@@ -98,5 +107,5 @@ if SAVE_RESULTS:
     df_out = df.copy().reset_index(drop=True)
     df_out["rank_mip_post_tight_old"]  = [str(v) if v is not None else "" for v in rank_vectors]
     df_out["tardiness_mip_post_tight_old"]    = tardiness_values
-    df_out.to_excel(OUTPUT_XLSX, index=False)
-    print(f"Wrote results to: {OUTPUT_XLSX}")
+    df_out.to_excel(args.output, index=False)
+    print(f"Wrote results to: {args.output}")

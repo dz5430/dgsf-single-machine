@@ -10,6 +10,7 @@ Recover instance characteristics from (rho, tau, eps).
 
 import ast
 import math
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -31,8 +32,8 @@ def fit_step_through_origin(r: np.ndarray, rho: np.ndarray) -> float:
     return float(np.dot(r, rho) / denom)
 
 
-def main() -> None:
-    df = pd.read_excel(INPUT_XLSX)
+def main(input_xlsx: str = INPUT_XLSX, output_xlsx: str = OUTPUT_XLSX) -> None:
+    df = pd.read_excel(input_xlsx)
 
     theta_deg_list                = []
     sigma_mult_I_tauavg_list      = []
@@ -123,9 +124,13 @@ def main() -> None:
         "eps_delta_mult_tauavg":       eps_delta_mult_tauavg_list,
     })
 
-    out.to_excel(OUTPUT_XLSX, index=False)
-    print(f"\nSaved to {OUTPUT_XLSX}")
+    out.to_excel(output_xlsx, index=False)
+    print(f"\nSaved to {output_xlsx}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Recover scheduling instance characteristics.")
+    parser.add_argument("--input", default=INPUT_XLSX, help="Input Excel file.")
+    parser.add_argument("--output", default=OUTPUT_XLSX, help="Output Excel file.")
+    args = parser.parse_args()
+    main(args.input, args.output)

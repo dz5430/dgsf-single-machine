@@ -17,6 +17,7 @@ Rank-vector cells can be stored as:
 """
 
 import ast
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -94,12 +95,18 @@ def spearman_rho(a: np.ndarray, b: np.ndarray) -> float:
 # ----------------------------
 # Main
 # ----------------------------
-def main() -> None:
-    df = pd.read_excel(INPUT_XLSX)
+def main(
+    input_xlsx: str = INPUT_XLSX,
+    method_obj_col: str = METHOD_OBJ_COL,
+    ref_obj_col: str = REF_OBJ_COL,
+    pred_rank_col: str = PRED_RANK_COL,
+    ref_rank_col: str = REF_RANK_COL,
+) -> None:
+    df = pd.read_excel(input_xlsx)
 
     # ---- Gap stats ----
-    method_obj = to_float_array(df[METHOD_OBJ_COL])
-    ref_obj = to_float_array(df[REF_OBJ_COL])
+    method_obj = to_float_array(df[method_obj_col])
+    ref_obj = to_float_array(df[ref_obj_col])
 
     denom = np.where(np.abs(ref_obj) <= TOL, np.nan, ref_obj)
     gap_pct = 100.0 * (method_obj - ref_obj) / denom
@@ -116,8 +123,8 @@ def main() -> None:
     print("========================================")
     print("Objective / Gap Summary")
     print("========================================")
-    print(f"Method objective col:    {METHOD_OBJ_COL}")
-    print(f"Reference objective col: {REF_OBJ_COL}")
+    print(f"Method objective col:    {method_obj_col}")
+    print(f"Reference objective col: {ref_obj_col}")
     print("")
     print("Gap % = 100*(method - ref)/ref")
     print(f"Mean ± Std: {gap_mean:.4f}% ± {gap_std:.4f}%")
@@ -127,15 +134,15 @@ def main() -> None:
     print("")
 
     # ---- Spearman rho ----
-    if PRED_RANK_COL not in df.columns:
-        raise KeyError(f"Missing predicted rank column: {PRED_RANK_COL}")
-    if REF_RANK_COL not in df.columns:
-        raise KeyError(f"Missing reference rank column: {REF_RANK_COL}")
+    if pred_rank_col not in df.columns:
+        raise KeyError(f"Missing predicted rank column: {pred_rank_col}")
+    if ref_rank_col not in df.columns:
+        raise KeyError(f"Missing reference rank column: {ref_rank_col}")
 
     rhos = []
     for i in range(total_n):
-        pred_vec = parse_rank_vector(df.loc[i, PRED_RANK_COL])
-        ref_vec = parse_rank_vector(df.loc[i, REF_RANK_COL])
+        pred_vec = parse_rank_vector(df.loc[i, pred_rank_col])
+        ref_vec = parse_rank_vector(df.loc[i, ref_rank_col])
 
         if pred_vec is None or ref_vec is None:
             rhos.append(np.nan)
@@ -156,11 +163,18 @@ def main() -> None:
     print("========================================")
     print("Spearman's rho (rank vectors)")
     print("========================================")
-    print(f"Pred rank col: {PRED_RANK_COL}")
-    print(f"Ref  rank col: {REF_RANK_COL}")
+    print(f"Pred rank col: {pred_rank_col}")
+    print(f"Ref  rank col: {ref_rank_col}")
     print(f"Valid instances: {valid_n} / {total_n}")
     print(f"Mean ± Std: {rho_mean:.4f} ± {rho_std:.4f}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Evaluate objective gaps and rank-vector similarity.")
+    parser.add_argument("--input", default=INPUT_XLSX, help="Input Excel file.")
+    parser.add_argument("--method-obj-col", default=METHOD_OBJ_COL, help="Method objective column.")
+    parser.add_argument("--ref-obj-col", default=REF_OBJ_COL, help="Reference objective column.")
+    parser.add_argument("--pred-rank-col", default=PRED_RANK_COL, help="Predicted rank-vector column.")
+    parser.add_argument("--ref-rank-col", default=REF_RANK_COL, help="Reference rank-vector column.")
+    args = parser.parse_args()
+    main(args.input, args.method_obj_col, args.ref_obj_col, args.pred_rank_col, args.ref_rank_col)

@@ -12,6 +12,7 @@ import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
 import math
 import time
+import argparse
 
 # =============================
 # Model: DeepSetsRanker
@@ -151,8 +152,14 @@ def refine_by_local_swaps(rho, tau, eps, ranks, batch_list, max_lookahead=4):
 # -----------------------------
 # Main Inference Loop
 # -----------------------------
-# Load data
-df = pd.read_excel('Updated_file.xlsx')
+parser = argparse.ArgumentParser(description="Run DeepSets inference and local-swap refinement.")
+parser.add_argument("--input", default="Updated_file.xlsx", help="Input Excel file.")
+parser.add_argument("--model", default="Model_name.pth", help="Trained PyTorch model path.")
+parser.add_argument("--output", default="Post_ML_file.xlsx", help="Output Excel file.")
+parser.add_argument("--max-lookahead", type=int, default=4, help="Maximum local-swap lookahead.")
+args = parser.parse_args()
+
+df = pd.read_excel(args.input)
 
 # Input features must align with ones used to train the model
 input_feature_cols = [
@@ -169,7 +176,7 @@ input_feature_cols = [
 input_size = len(input_feature_cols)
 
 model = DeepSetsRanker(input_size=input_size)
-model.load_state_dict(torch.load("Model_name.pth"))
+model.load_state_dict(torch.load(args.model, map_location="cpu"))
 model.eval()
 
 total_start_time = time.time()
@@ -209,7 +216,7 @@ for _, row in df.iterrows():
     # Apply local pairwise swap
     post_start_time = time.time()
     best_ranks, best_tardiness = refine_by_local_swaps(
-        rho, tau, eps, predicted_ranks, batch_list, max_lookahead=4
+        rho, tau, eps, predicted_ranks, batch_list, max_lookahead=args.max_lookahead
     )
     post_duration = time.time() - post_start_time
 
@@ -229,6 +236,6 @@ df["rank_swap"] = rank_swap_values
 df["tardiness_swap"] = tardiness_swap_values
 df["postprocessing_time_swap"] = post_swap_times
 
-output_filename = 'Post_ML_file.xlsx'
+output_filename = args.output
 df.to_excel(output_filename, index=False)
 print(f"Saved results to {output_filename} in {time.time() - total_start_time:.2f}s")

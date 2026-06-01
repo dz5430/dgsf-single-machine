@@ -25,6 +25,12 @@ Data/
 
 Results/
     Experiment outputs (download from Google Drive)
+
+environment.yml
+    Conda environment used for the revised reproducibility package
+
+REPRODUCIBILITY.md
+    Step-by-step setup and command-line workflow
 ```
 
 ---
@@ -101,6 +107,32 @@ Download the files and place them in the corresponding folders:
 Data/
 Results/
 ```
+
+## Reproducibility
+
+Create the conda environment from the repository root:
+
+```bash
+conda env create -f environment.yml
+conda activate scheduling_env
+```
+
+The optimization scripts use Pyomo with the Gurobi command-line solver. Install
+Gurobi separately, activate a valid license, and verify that Pyomo can find it:
+
+```bash
+python -c "import pyomo.environ as pyo; print(pyo.SolverFactory('gurobi').available(False))"
+```
+
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow, including
+example commands for feature generation, reference-solution generation, model
+inference, MIP post-processing, and evaluation.
+
+## Archived Code Snapshot
+
+For manuscript reproducibility, archive the final GitHub release on Zenodo and
+cite the DOI-linked snapshot in the revised paper. The DOI badge/link should be
+added here after the Zenodo release is created.
 
 ---
 
