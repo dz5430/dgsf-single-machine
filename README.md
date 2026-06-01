@@ -128,16 +128,3 @@ See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow, including
 example commands for feature generation, reference-solution generation, model
 inference, MIP post-processing, and evaluation.
 
-## Archived Code Snapshot
-
-For manuscript reproducibility, archive the final GitHub release on Zenodo and
-cite the DOI-linked snapshot in the revised paper. The DOI badge/link should be
-added here after the Zenodo release is created.
-
----
-
-## Citation
-
-If you use this repository, please cite the associated paper.
-
-**Paper currently under review. Citation information will be added once available.**
