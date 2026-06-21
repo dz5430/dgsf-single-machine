@@ -1,9 +1,18 @@
-This folder contains input datasets and trained models.
+# Data Files
 
-The files are not stored in this repository due to size limits.
+This folder stores input datasets and trained model checkpoints used by the
+single-machine DGSF workflow.
 
-Download them from the project Google Drive linked in the root README and place
-them here. Keep trained model checkpoints under `Data/Trained Models/`.
+Large `.xlsx`, `.csv`, and `.pth` artifacts are not stored in git. Download
+them from the project Google Drive folder and place them here according to
+`../docs/google_drive_manifest.md`.
 
-The main scripts accept command-line paths, so reviewers do not need to edit the
-source code. See `../REPRODUCIBILITY.md` for example commands.
+Expected subfolders:
+
+```text
+Facility Products/
+Trained Models/
+```
+
+The main scripts accept command-line paths, so reviewers can keep the data in a
+different location if they adjust the paths in the commands.

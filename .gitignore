@@ -18,4 +18,18 @@ Results/*
 !Data/
 !Results/
 !Data/README.md
+!Data/Facility Products/
+!Data/Facility Products/*.csv
+!Data/Trained Models/
+!Data/Trained Models/README.md
 !Results/README.md
+!Results/F1/
+!Results/F1/README.md
+!Results/F2/
+!Results/F2/README.md
+!Results/F3/
+!Results/F3/README.md
+!Results/F4/
+!Results/F4/README.md
+!Results/F5/
+!Results/F5/README.md

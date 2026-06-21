@@ -1,6 +1,9 @@
-This folder contains experiment outputs and evaluation results.
+# Result Files
 
-Large result files are hosted on Google Drive and should be placed here locally if needed.
+This folder stores downloaded or regenerated experiment outputs.
 
-Generated files from the reproducibility workflow can also be written here. See
-`../REPRODUCIBILITY.md` for example commands.
+Large `.xlsx` and `.csv` result files are hosted outside git and should be
+placed here locally when reproducing the experiments. See
+`../docs/google_drive_manifest.md` for expected filenames.
+
+Generated files from the reproducibility workflow can also be written here.

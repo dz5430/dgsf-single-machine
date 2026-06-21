@@ -1,133 +1,128 @@
-# DGSF: DeepSets-Guided Scheduling Framework
+# DGSF Single-Machine Scheduling
 
-This repository contains the implementation of the **DeepSets-Guided Scheduling Framework (DGSF)** for the **single-machine non-preemptive total tardiness scheduling problem**.
+Code and reproducibility files for the DeepSets-Guided Scheduling Framework
+(DGSF) single-machine total tardiness experiments.
 
----
+The model predicts a static job-priority vector for a non-preemptive
+single-machine scheduling instance. The predicted sequence can then be improved
+with local swap refinement and continuous-time MIP post-processing.
 
-## Framework Overview
+## Contents
 
-![DGSF Pipeline](figures/dgsf_pipeline.png)
+- `Code/1_data_processing/`: instance generation, feature construction, and
+  time-indexed MIP reference-solution scripts.
+- `Code/2_dgsf_main/`: DeepSets training, ML inference with swap refinement,
+  and continuous-time MIP post-processing.
+- `Code/3_evaluation/`: dispatching-rule baselines, schedule evaluation, and
+  feature-importance analysis.
+- `Data/`: small product tables plus downloaded training/test artifacts and
+  trained model checkpoints.
+- `Results/`: downloaded or regenerated experiment outputs.
+- `environment.yml`: conda environment used for the reproducibility workflow.
+- `REPRODUCIBILITY.md`: step-by-step setup and command-line workflow.
+- `docs/google_drive_manifest.md`: expected external artifacts and where to
+  place them.
 
-The framework integrates machine learning with optimization-based post-processing.
+Large `.xlsx`, `.csv`, and `.pth` artifacts are not committed. Download them
+from the project Google Drive folder and place them in `Data/` and `Results/`
+as described in `docs/google_drive_manifest.md`.
 
----
-
-## Repository Structure
-
-```
-Code/
-    1_data_processing
-    2_dgsf_main
-    3_evaluation
-
-Data/
-    Input datasets (download from Google Drive)
-
-Results/
-    Experiment outputs (download from Google Drive)
-
-environment.yml
-    Conda environment used for the revised reproducibility package
-
-REPRODUCIBILITY.md
-    Step-by-step setup and command-line workflow
-```
-
----
-
-## Machine Learning Component
-
-**DeepSets_SMS_Scheduling_training.py**  
-Implements the DeepSets-based machine learning model used to predict job priorities from instance features.
-
-**Load_ML_swap.py**  
-Loads a trained model and produces an initial job sequence prediction with a lightweight swap refinement.
-
----
-
-## Optimization Models
-
-**Single_machine_discrete_time.py**  
-Discrete-time MIP model used to generate reference solutions.
-
-**Solver_discrete_time.py**  
-Solver script for running the discrete-time model.
-
-**MIP_ContTime_Post_Tight.py**  
-Continuous-time MIP model used for post-processing predicted schedules.
-
-**Solver_MIP_ct_post.py**  
-Solver script for the continuous-time post-processing model.
-
----
-
-## Data Processing
-
-**SMS_instance_generation.py**  
-Generates synthetic scheduling instances.
-
-**SMS_instance_classification.py**  
-Computes instance-level parameters (θ, σ, δ).
-
-**Update_input_features.py**  
-Generates features required for training the ML model.
-
----
-
-## Evaluation
-
-**Schedule_evaluation.py**  
-Computes evaluation metrics including optimality gap and Spearman's rank correlation.
-
-**Dispatching_heuristics.py**  
-Computes EDD, SPT, LSF, ATC, and PRTT dispatching-rule baselines.
-
-**Feature Importance.py**  
-Permutation-based feature importance analysis for the DeepSets model.
-
----
-
-## Workflow
-
-1. Generate or classify scheduling instances using `SMS_instance_generation.py` or `SMS_instance_classification.py`.
-2. Compute features using `Update_input_features.py`.
-3. Based on the instance characteristic from step 1, train the DeepSets model or select a pretrained model.
-4. Generate predicted sequences and perform local swap using `Load_ML_swap.py`.
-5. Apply MIP post-processing using `Solver_MIP_ct_post.py` to obtain final schedules.
-
----
-
-## Data and Trained Models
-
-Large datasets, trained models, and experiment outputs are available here:
-
-**Google Drive:**  
-[Download datasets and trained models](https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP)
-
-Download the files and place them in the corresponding folders:
-
-```
-Data/
-Results/
-```
-
-## Reproducibility
-
-Create the conda environment from the repository root:
+## Setup
 
 ```bash
+git clone https://github.com/dz5430/dgsf-single-machine.git
+cd dgsf-single-machine
 conda env create -f environment.yml
 conda activate scheduling_env
 ```
 
-The optimization scripts use Pyomo with the Gurobi command-line solver. Install
-Gurobi separately, activate a valid license, and verify that Pyomo can find it:
+Alternatively, in an existing Python 3.10 environment:
+
+```bash
+pip install -r requirements.txt
+```
+
+The MIP scripts use Pyomo with Gurobi. Install Gurobi separately, activate a
+valid license, and verify access:
 
 ```bash
 python -c "import pyomo.environ as pyo; print(pyo.SolverFactory('gurobi').available(False))"
 ```
 
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow, including
-example commands for feature generation, reference-solution generation, model
-inference, MIP post-processing, and evaluation.
+The command should print `True`.
 
+## Data Layout
+
+Place external artifacts as follows:
+
+```text
+Data/
+    Facility Products/
+    Trained Models/
+Results/
+    F1/
+    F2/
+    F3/
+    F4/
+    F5/
+```
+
+The expected filenames are listed in `docs/google_drive_manifest.md`.
+
+## Run the Pipeline
+
+The scripts can be run from the repository root.
+
+Run a pretrained DeepSets model with local-swap refinement:
+
+```bash
+python Code/2_dgsf_main/Load_ML_swap.py \
+  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --model "Data/Trained Models/Dev3_30_theta_max_6Itau.pth" \
+  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx
+```
+
+Run continuous-time MIP post-processing:
+
+```bash
+python Code/2_dgsf_main/Solver_MIP_ct_post.py \
+  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx \
+  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
+  --time-limit 60
+```
+
+Evaluate a schedule against the reference solution:
+
+```bash
+python Code/3_evaluation/Schedule_evaluation.py \
+  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
+  --method-obj-col tardiness_mip_post \
+  --ref-obj-col tardiness_dtime \
+  --pred-rank-col rank_mip_post \
+  --ref-rank-col rank_vector_dtime
+```
+
+Evaluate static dispatching-rule baselines:
+
+```bash
+python Code/3_evaluation/Dispatching_heuristics.py \
+  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_heuristics.xlsx
+```
+
+## Metric
+
+Reported normalized tardiness gaps use the conventional optimality-gap
+definition:
+
+```text
+gap (%) = 100 * (TT_method - TT_opt) / TT_opt
+```
+
+All reported benchmark summaries use instances with positive `TT_opt`.
+
+## Full Reproducibility Notes
+
+See `REPRODUCIBILITY.md` for the complete workflow, including feature
+generation, reference-solution generation, optional retraining, and
+post-processing.
