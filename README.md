@@ -27,6 +27,9 @@ Large `.xlsx`, `.csv`, and `.pth` artifacts are not committed. Download them
 from the project Google Drive folder and place them in `Data/` and `Results/`
 as described in `docs/google_drive_manifest.md`.
 
+Google Drive:
+https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
+
 ## Setup
 
 ```bash

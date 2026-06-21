@@ -38,8 +38,11 @@ The command should print `True`.
 ## 3. Download and Place External Artifacts
 
 Large experiment artifacts are stored outside git. Download the artifact bundle
-from the project Google Drive folder linked in the manuscript materials, then
-place files under the paths listed in `docs/google_drive_manifest.md`.
+from the project Google Drive folder, then place files under the paths listed in
+`docs/google_drive_manifest.md`.
+
+Google Drive:
+https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 At minimum, a reproduced pretrained-model run needs:
 

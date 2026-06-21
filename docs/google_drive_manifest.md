@@ -1,8 +1,10 @@
 # External Artifact Manifest
 
 Large experiment artifacts are stored outside git. Download the artifact bundle
-from the project Google Drive folder linked in the manuscript materials and
-place files under the paths below.
+from the project Google Drive folder and place files under the paths below.
+
+Google Drive:
+https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 ## Product Tables
 
