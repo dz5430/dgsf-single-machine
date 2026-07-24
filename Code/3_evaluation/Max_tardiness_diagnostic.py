@@ -107,6 +107,16 @@ def save_result(df, row_index, prefix, threshold, result):
         df.at[row_index, f"{key}_{suffix}"] = result[key]
 
 
+def resolve_rank_column(df, requested):
+    """Use the public rank column name, with compatibility for supplied workbooks."""
+    if requested in df.columns:
+        return requested
+    if requested == "rank_swap" and "new_rank_swap" in df.columns:
+        print("Using the supplied workbook's compatible rank column.")
+        return "new_rank_swap"
+    raise KeyError(f"Missing rank column: {requested}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, help="Workbook containing the diagnostic instance.")
@@ -122,12 +132,13 @@ def main():
         raise ValueError("Table 6 uses delta=6 and a 120-second post-processing limit.")
 
     df = pd.read_excel(args.input, sheet_name="Schedules")
+    rank_column = resolve_rank_column(df, args.rank_column)
     for row_index, row in df.iterrows():
         jobs, _, tau, _, data = build_instance(row)
         for threshold in args.thresholds:
             reference = solve_reference(data, jobs, tau, threshold, args.solver, args.quiet)
             post = solve_dgsf_post(
-                data, jobs, tau, args.rank_column, row, threshold,
+                data, jobs, tau, rank_column, row, threshold,
                 args.delta, args.time_limit, args.solver, args.quiet,
             )
             save_result(df, row_index, "mip", threshold, reference)

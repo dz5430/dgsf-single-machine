@@ -34,6 +34,11 @@ REF_RANK_COL = "rank_vector_dtime"
 
 TOL = 1e-12
 
+COMPATIBLE_COLUMNS = {
+    "tardiness_dgsf_mip": ("tardiness_mip_post_tight_old", "tardiness_mip_post_tight"),
+    "rank_dgsf_mip": ("rank_mip_post_tight_old", "rank_mip_post_tight"),
+}
+
 
 # ----------------------------
 # Helpers
@@ -44,6 +49,17 @@ def to_float_array(s: pd.Series) -> np.ndarray:
         bad = np.where(np.isnan(arr))[0][:10]
         raise ValueError(f"Found NaNs in numeric column '{s.name}'. First bad indices: {bad.tolist()}")
     return arr
+
+
+def resolve_column(df: pd.DataFrame, requested: str) -> str:
+    """Use the public column name when available, with compatibility for supplied workbooks."""
+    if requested in df.columns:
+        return requested
+    for alternate in COMPATIBLE_COLUMNS.get(requested, ()):
+        if alternate in df.columns:
+            print(f"Using compatible workbook column '{alternate}' for '{requested}'.")
+            return alternate
+    raise KeyError(f"Missing column: {requested}")
 
 
 def parse_rank_vector(x):
@@ -103,6 +119,10 @@ def main(
     ref_rank_col: str = REF_RANK_COL,
 ) -> None:
     df = pd.read_excel(input_xlsx)
+    method_obj_col = resolve_column(df, method_obj_col)
+    ref_obj_col = resolve_column(df, ref_obj_col)
+    pred_rank_col = resolve_column(df, pred_rank_col)
+    ref_rank_col = resolve_column(df, ref_rank_col)
 
     # ---- Gap stats ----
     method_obj = to_float_array(df[method_obj_col])
@@ -134,11 +154,6 @@ def main(
     print("")
 
     # ---- Spearman rho ----
-    if pred_rank_col not in df.columns:
-        raise KeyError(f"Missing predicted rank column: {pred_rank_col}")
-    if ref_rank_col not in df.columns:
-        raise KeyError(f"Missing reference rank column: {ref_rank_col}")
-
     rhos = []
     for i in range(total_n):
         pred_vec = parse_rank_vector(df.loc[i, pred_rank_col])

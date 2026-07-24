@@ -4,12 +4,8 @@ Generic SMS model evaluator. It loads supported model classes from their
 training modules and chooses the architecture from checkpoint metadata when
 available.
 
-Supported architectures:
+Supported architecture:
   - dev9_lean: checkpoints from DeepSets_SMS_Scheduling_training_dev9_lean.py
-
-Checkpoints written by `DeepSets_SMS_Scheduling_training.py` can be evaluated
-with `Load_ML_swap.py`. That training script executes at import time, so it is
-not an import target for this metadata-driven evaluator.
 """
 
 import argparse
@@ -142,7 +138,7 @@ def infer_architecture(raw_checkpoint, requested: str) -> str:
         return "dev9_lean"
     raise ValueError(
         "Could not infer architecture. This evaluator expects metadata-rich "
-        "Dev9-Lean SMS checkpoints. Use Load_ML_swap.py for the original checkpoint format."
+        "Dev9-Lean SMS checkpoints."
     )
 
 

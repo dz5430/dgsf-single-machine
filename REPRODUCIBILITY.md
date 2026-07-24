@@ -28,8 +28,9 @@ Verify the Python dependencies:
 python -c "import numpy, pandas, scipy, sklearn, pyomo, torch, matplotlib, openpyxl; print('environment ok')"
 ```
 
-The MIP models require Gurobi through Pyomo. Install Gurobi separately, activate
-a valid license, and make sure it is visible from the activated environment:
+The MIP models require Gurobi through Pyomo. Results were produced with Gurobi
+10.0.1. Install Gurobi separately, activate a valid license, and make sure it
+is visible from the activated environment:
 
 ```bash
 python -c "import pyomo.environ as pyo; print(pyo.SolverFactory('gurobi').available(False))"

@@ -46,8 +46,8 @@ Alternatively, in an existing Python 3.10 environment:
 pip install -r requirements.txt
 ```
 
-The MIP scripts use Pyomo with Gurobi. Install Gurobi separately, activate a
-valid license, and verify access:
+The MIP scripts use Pyomo with Gurobi. Results were produced with Gurobi
+10.0.1. Install Gurobi separately, activate a valid license, and verify access:
 
 ```bash
 python -c "import pyomo.environ as pyo; print(pyo.SolverFactory('gurobi').available(False))"
