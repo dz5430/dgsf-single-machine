@@ -1,7 +1,7 @@
 # F1 Results
 
-This directory mirrors the Drive `Results/F1/` folder. Preserve these child
-folders when downloading the bundle:
+This directory mirrors the artifact archive's `Results/F1/` folder. Preserve
+these child folders when downloading the data archive:
 
 ```text
 input/

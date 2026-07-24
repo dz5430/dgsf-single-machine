@@ -2,16 +2,13 @@
 """
 Train an SMS DeepSets ranker using the lean Dev9 architecture and pairwise loss.
 
-This is an experimental single-machine variant of the PMS Dev9-lean model:
-  - keeps the Dev9-lean DeepSets encoder, attention pooling, post block, and
-    priority head;
-  - uses the original SMS per-job feature columns;
-  - replaces the old SMS Margin-ListNet objective with a Dev9-style pairwise
-    margin ranking loss over all valid job pairs in each single-machine
-    sequence.
+The model uses a Dev9-Lean DeepSets encoder, attention pooling, a post block,
+and a priority head with the SMS per-job feature columns. Training uses a
+pairwise margin-ranking loss over valid job pairs in each single-machine
+sequence.
 
-The script is intentionally separate from the submitted SMS trainer so the old
-and revised ML models can be compared cleanly during the R1 revision.
+The implementation is kept in a standalone module so that the evaluator and
+feature-importance analysis can import the exact model definition.
 """
 
 import argparse
@@ -46,9 +43,8 @@ SMS_FEATURE_COLS = [
     "myopic_lateness",
 ]
 
-# Default cluster paths matching the currently used SMS cluster trainer.
-# To train Type B instead, either edit these two lines or pass --input and
-# --output-model on the command line.
+# Default artifact names for Type A training. To train Type B or another
+# instance type, pass --input and --output-model on the command line.
 DEFAULT_TRAIN_FILE = "Dev3_50k_singlemachine_instances_30_theta_max_6Itau_train.csv"
 DEFAULT_OUTPUT_MODEL = "30_theta_max_6Itau_Dev3_50k_dev9_lean.pth"
 DEFAULT_METRICS_CSV = "30_theta_max_6Itau_Dev3_50k_dev9_lean_metrics.csv"

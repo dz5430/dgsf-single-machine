@@ -8,7 +8,7 @@ Schedule evaluations:
 Required Excel columns:
 - METHOD_OBJ_COL (e.g., tardiness from your method)
 - REF_OBJ_COL    (e.g., tardiness from discrete-time reference)
-- PRED_RANK_COL  = "rank_mip_post_tight"
+- PRED_RANK_COL  = "rank_dgsf_mip"
 - REF_RANK_COL   = "rank_vector_dtime"
 
 Rank-vector cells can be stored as:
@@ -24,12 +24,12 @@ import pandas as pd
 # ----------------------------
 # Config
 # ----------------------------
-INPUT_XLSX = "Dev3_singlemachine_instances_60_theta_max_6Itau_test_2.xlsx"
+INPUT_XLSX = "schedule_results.xlsx"
 
-METHOD_OBJ_COL = "tardiness_mip_post_tight"
+METHOD_OBJ_COL = "tardiness_dgsf_mip"
 REF_OBJ_COL = "tardiness_dtime"
 
-PRED_RANK_COL = "rank_mip_post_tight"
+PRED_RANK_COL = "rank_dgsf_mip"
 REF_RANK_COL = "rank_vector_dtime"
 
 TOL = 1e-12

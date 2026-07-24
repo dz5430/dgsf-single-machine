@@ -1,7 +1,7 @@
 """Reproduce the capped MIP and DGSF post-processing schedules in Table 6.
 
 The input workbook must contain one or more rows with ``I``, ``rho``, ``tau``,
-``eps``, and ``new_rank_swap`` columns.  The latter is the DGSF sequence after
+``eps``, and ``rank_swap`` columns. The latter is the DGSF sequence after
 the ordinary local-swap step.  The script writes the capped time-indexed MIP
 reference solution and the capped rank-window post-processing solution for
 each requested threshold.  The paper uses delta=6 and a 120-second time limit.
@@ -26,13 +26,8 @@ if (SCRIPT_DIR.parents[1] / "Code").is_dir():
     ROOT = SCRIPT_DIR.parents[1]
     DATA_PROCESSING_DIR = ROOT / "Code" / "1_data_processing"
     DGSF_DIR = ROOT / "Code" / "2_dgsf_main"
-elif (SCRIPT_DIR.parent / "04_scripts").is_dir():
-    # Google Drive archive layout: 04_scripts/this_file.py
-    ROOT = SCRIPT_DIR.parent
-    DATA_PROCESSING_DIR = SCRIPT_DIR
-    DGSF_DIR = SCRIPT_DIR
 else:
-    raise RuntimeError("Could not identify the repository or Google Drive archive layout.")
+    raise RuntimeError("Could not identify the repository layout.")
 
 sys.path.insert(0, str(DATA_PROCESSING_DIR))
 sys.path.insert(0, str(DGSF_DIR))
@@ -116,7 +111,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, help="Workbook containing the diagnostic instance.")
     parser.add_argument("--output", required=True, help="Workbook to receive recreated results.")
-    parser.add_argument("--rank-column", default="new_rank_swap")
+    parser.add_argument("--rank-column", default="rank_swap")
     parser.add_argument("--thresholds", nargs="+", type=int, default=[10, 12, 15])
     parser.add_argument("--delta", type=int, default=6)
     parser.add_argument("--time-limit", type=float, default=120)

@@ -2,8 +2,8 @@
 
 This folder is intentionally kept lightweight in git.
 
-Place the two `.pth` checkpoints from the Drive `Data/Trained Models/` folder
-here after downloading the external artifact bundle.
+Place the two `.pth` checkpoints from the artifact archive's
+`Data/Trained Models/` folder here after downloading the external data archive.
 
 Expected pretrained checkpoints for the reproducibility examples:
 

@@ -1,7 +1,7 @@
-# DGSF Single-Machine Scheduling
+# DGSF: A DeepSets-Guided Scheduling Framework for Single-Machine Total Tardiness
 
-Code and reproducibility files for the DeepSets-Guided Scheduling Framework
-(DGSF) single-machine total tardiness experiments.
+Code and reproducibility materials for the DeepSets-Guided Scheduling Framework
+(DGSF) experiments on the single-machine total tardiness problem.
 
 The model predicts a static job-priority vector for a non-preemptive
 single-machine scheduling instance. The predicted sequence can then be improved
@@ -15,21 +15,20 @@ with local swap refinement and continuous-time MIP post-processing.
   and continuous-time MIP post-processing.
 - `Code/3_evaluation/`: dispatching-rule baselines, schedule evaluation, and
   feature-importance analysis.
-- `Data/`: product tables plus downloaded training/test artifacts and model
-  checkpoints from the Google Drive bundle.
-- `Results/`: downloaded or regenerated experiment outputs, arranged to mirror
-  the Google Drive bundle (`Tables/`, `F1/`, `F2/`, `F3/`, `F4/`, and `F5/`).
+- `Data/`: product tables, trained checkpoints, and external benchmark data.
+- `Results/`: supplied or regenerated experiment outputs (`Tables/`, `F1/`,
+  `F2/`, `F3/`, `F4/`, and `F5/`).
 - `environment.yml`: conda environment used for the reproducibility workflow.
 - `REPRODUCIBILITY.md`: step-by-step setup and command-line workflow.
-- `docs/google_drive_manifest.md`: expected external artifacts and where to
-  place them.
+- `docs/artifact_manifest.md`: expected external artifacts and where to place
+  them.
 
 Large `.xlsx`, `.csv`, and `.pth` artifacts are not committed. Download the
-contents of the project Google Drive folder, preserving its folder structure,
-and merge them into this repository. The exact layout and current filenames
-are listed in `docs/google_drive_manifest.md`.
+project data archive, preserve its folder structure, and merge it into this
+repository. The exact layout and filenames are listed in
+`docs/artifact_manifest.md`.
 
-Google Drive:
+Artifact archive:
 https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 ## Setup
@@ -55,6 +54,27 @@ python -c "import pyomo.environ as pyo; print(pyo.SolverFactory('gurobi').availa
 ```
 
 The command should print `True`.
+
+## Instance Types, Facilities, and Filename Tokens
+
+The manuscript studies two instance types and five facility configurations.
+
+| Token | Meaning |
+|---|---|
+| `theta_max_6Itau` | Type A instances, with all jobs released at time zero. |
+| `theta_0max_40tau_avg` | Type B instances, with staggered release times. |
+| `F1` | Base facility with integer processing times (time resolution 1.0). |
+| `F2`, `F3` | Alternative facilities used in the generalization study. |
+| `F4`, `F5` | F1 evaluated at time resolutions 0.5 and 0.1, respectively. |
+
+Artifact filenames retain the identifiers used to generate the reported
+results. `Dev3` identifies the data-generation configuration, `_u4` identifies
+a processed workbook containing model features and reference-solution columns,
+`50k` denotes 50,000 training instances, and `dev9_lean` identifies the
+DeepSets model architecture. The `_dgsf` and `_mip` suffixes distinguish DGSF
+outputs and their MIP-postprocessed counterparts. These filenames are retained
+so that the repository paths correspond directly to the accompanying data
+archive.
 
 ## Data Layout
 
@@ -87,13 +107,13 @@ Results/
         output/
 ```
 
-The expected filenames are listed in `docs/google_drive_manifest.md`.
+The expected filenames are listed in `docs/artifact_manifest.md`.
 
 ## Run the Pipeline
 
 The scripts can be run from the repository root.
 
-Run the archived Dev9-lean model with local-swap refinement:
+Run the supplied Dev9-Lean model with local-swap refinement:
 
 ```bash
 python Code/2_dgsf_main/evaluate_sms_model.py \
@@ -101,15 +121,15 @@ python Code/2_dgsf_main/evaluate_sms_model.py \
   --model "Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth" \
   --architecture dev9_lean \
   --device cpu \
-  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf.xlsx
 ```
 
 Run continuous-time MIP post-processing:
 
 ```bash
 python Code/2_dgsf_main/Solver_MIP_ct_post.py \
-  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx \
-  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf.xlsx \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf_mip.xlsx \
   --time-limit 60
 ```
 
@@ -117,10 +137,10 @@ Evaluate a schedule against the reference solution:
 
 ```bash
 python Code/3_evaluation/Schedule_evaluation.py \
-  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
-  --method-obj-col tardiness_mip_post_tight_old \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf_mip.xlsx \
+  --method-obj-col tardiness_dgsf_mip \
   --ref-obj-col tardiness_dtime \
-  --pred-rank-col rank_mip_post_tight_old \
+  --pred-rank-col rank_dgsf_mip \
   --ref-rank-col rank_vector_dtime
 ```
 

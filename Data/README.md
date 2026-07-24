@@ -4,8 +4,8 @@ This folder stores input datasets and trained model checkpoints used by the
 single-machine DGSF workflow.
 
 Large `.xlsx`, `.csv`, and `.pth` artifacts are not stored in git. Download the
-Google Drive `Data/` folder into this directory, preserving its two child
-folders, according to `../docs/google_drive_manifest.md`.
+`Data/` folder from the external artifact archive into this directory,
+preserving its two child folders, according to `../docs/artifact_manifest.md`.
 
 Expected subfolders:
 

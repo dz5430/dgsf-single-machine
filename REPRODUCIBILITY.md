@@ -1,9 +1,9 @@
 # Reproducibility Guide
 
 This guide describes how to reproduce the single-machine DGSF workflow from a
-fresh clone after downloading the current Google Drive artifact bundle. The
-Drive folder is organized to merge directly into the repository; preserve its
-`Data/` and `Results/` subfolders when downloading.
+fresh clone after downloading the external data archive. The archive is
+organized to merge directly into the repository; preserve its `Data/` and
+`Results/` subfolders when downloading.
 
 ## 1. Clone the Repository
 
@@ -39,12 +39,11 @@ The command should print `True`.
 
 ## 3. Download and Place External Artifacts
 
-Large experiment artifacts are stored outside git. Download the complete
-artifact bundle from the project Google Drive folder and merge it into the
-repository root, preserving the Drive folder structure. The exact current
-paths are listed in `docs/google_drive_manifest.md`.
+Large experiment artifacts are stored outside git. Download the complete data
+archive and merge it into the repository root, preserving the archive folder
+structure. The exact paths are listed in `docs/artifact_manifest.md`.
 
-Google Drive:
+Artifact archive:
 https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 At minimum, the pretrained-model example needs:
@@ -54,7 +53,7 @@ Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth
 Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx
 ```
 
-## 4. Run the Archived Dev9-Lean DGSF Model
+## 4. Run the Supplied Dev9-Lean DGSF Model
 
 Run model inference and local-swap refinement:
 
@@ -64,7 +63,7 @@ python Code/2_dgsf_main/evaluate_sms_model.py \
   --model "Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth" \
   --architecture dev9_lean \
   --device cpu \
-  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf.xlsx
 ```
 
 The output workbook contains the predicted ML rank vector, ML tardiness, local
@@ -78,8 +77,8 @@ MIP postprocessor:
 
 ```bash
 python Code/2_dgsf_main/Solver_MIP_ct_post.py \
-  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx \
-  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf.xlsx \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf_mip.xlsx \
   --time-limit 60
 ```
 
@@ -90,10 +89,10 @@ and termination columns used by the evaluation script.
 
 ```bash
 python Code/3_evaluation/Schedule_evaluation.py \
-  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
-  --method-obj-col tardiness_mip_post_tight_old \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_dgsf_mip.xlsx \
+  --method-obj-col tardiness_dgsf_mip \
   --ref-obj-col tardiness_dtime \
-  --pred-rank-col rank_mip_post_tight_old \
+  --pred-rank-col rank_dgsf_mip \
   --ref-rank-col rank_vector_dtime
 ```
 
@@ -118,8 +117,9 @@ from recursive dispatching-rule baselines.
 ## 8. Generate Features or Reference Solutions for New Instance Types
 
 This preprocessing is required when training or evaluating a new instance type
-from raw generated instances. It is not required to reproduce the frozen
-manuscript tables if the processed workbooks from Google Drive are downloaded.
+from raw generated instances. It is not required to reproduce the reported
+manuscript tables if the processed workbooks from the data archive are
+downloaded.
 First construct the ML input features:
 
 ```bash
@@ -164,7 +164,7 @@ paths for the new instance type.
 
 The two diagnostic workbooks are in the Drive folder
 `Results/F1/Max Tardiness Evaluation/`. The capped workbook's stored
-`new_rank_swap` column is the sequence produced by the DGSF local-swap step.
+`rank_swap` column is the sequence produced by the DGSF local-swap step.
 The following command recreates the capped time-indexed MIP references and
 capped DGSF post-processing solutions for threshold multipliers 10, 12, and
 15:

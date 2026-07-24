@@ -1,10 +1,10 @@
 # External Artifact Manifest
 
-Large experiment artifacts are stored outside git. Download the complete
-artifact bundle and merge it into the repository root, preserving the Drive
-folder structure. The paths below are the current frozen-bundle layout.
+Large experiment artifacts are stored outside git. Download the complete data
+archive and merge it into the repository root, preserving the archive folder
+structure. The paths below are the expected artifact layout.
 
-Google Drive:
+Artifact archive:
 https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 ## Product Tables
@@ -28,7 +28,7 @@ Data/Trained Models/30_theta_0max_40tau_avg_Dev3_50k_dev9_lean.pth
 
 ## Result Folder Layout
 
-The Drive `Results/` folder contains the following top-level folders:
+The archive `Results/` folder contains the following top-level folders:
 
 ```text
 Results/Tables/
@@ -68,9 +68,8 @@ Results/F1/input/Dev3_singlemachine_instances_80_theta_max_6Itau_u4.csv
 ```
 
 Download the complete `F1_DGSF/`, `F1_Recursive/`, and `Time resolution/`
-subfolders; their filenames are retained exactly as stored in Drive. The
-`F1_DGSF/` files use the `newML` and `newML_mip` suffixes, while recursive
-baselines are stored under `F1_Recursive/`.
+subfolders. The `F1_DGSF/` files contain DGSF outputs and their MIP
+post-processing results; recursive baselines are stored under `F1_Recursive/`.
 
 ### F2-F5
 

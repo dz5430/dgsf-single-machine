@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Generic SMS model evaluator.
-
-Unlike the original Load_ML_swap.py, this script does not duplicate a model
-definition. It loads supported model classes from their training modules and
-chooses the architecture from checkpoint metadata when available.
+Generic SMS model evaluator. It loads supported model classes from their
+training modules and chooses the architecture from checkpoint metadata when
+available.
 
 Supported architectures:
   - dev9_lean: checkpoints from DeepSets_SMS_Scheduling_training_dev9_lean.py
 
-Legacy checkpoints from the original SMS trainer can still be evaluated with
-Load_ML_swap.py. That training script runs at import time, so it is not a clean
-import target for this metadata-driven evaluator.
+Checkpoints written by `DeepSets_SMS_Scheduling_training.py` can be evaluated
+with `Load_ML_swap.py`. That training script executes at import time, so it is
+not an import target for this metadata-driven evaluator.
 """
 
 import argparse
@@ -48,8 +46,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--architecture", choices=["auto", "dev9_lean"], default="auto")
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--max-lookahead", type=int, default=4)
-    parser.add_argument("--legacy-standard-scaler", action="store_true",
-                        help="Use sklearn StandardScaler per instance, matching the original loader.")
+    parser.add_argument("--standard-scaler", action="store_true",
+                        help="Apply sklearn StandardScaler independently to each instance.")
     return parser.parse_args()
 
 
@@ -144,7 +142,7 @@ def infer_architecture(raw_checkpoint, requested: str) -> str:
         return "dev9_lean"
     raise ValueError(
         "Could not infer architecture. This evaluator expects metadata-rich "
-        "Dev9-lean SMS checkpoints. Use Load_ML_swap.py for legacy original checkpoints."
+        "Dev9-Lean SMS checkpoints. Use Load_ML_swap.py for the original checkpoint format."
     )
 
 
@@ -219,7 +217,7 @@ def main() -> None:
         features = prepare_features(
             row,
             feature_cols,
-            use_standard_scaler=(args.legacy_standard_scaler or architecture == "original"),
+            use_standard_scaler=args.standard_scaler,
         )
         t0 = time.time()
         scores = score_instance(model, architecture, features, device)

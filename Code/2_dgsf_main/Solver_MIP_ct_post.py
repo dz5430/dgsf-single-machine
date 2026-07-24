@@ -105,7 +105,7 @@ for k, (idx, row) in enumerate(df.iterrows(), start=1):
 # Save results for all rows
 if SAVE_RESULTS:
     df_out = df.copy().reset_index(drop=True)
-    df_out["rank_mip_post_tight_old"]  = [str(v) if v is not None else "" for v in rank_vectors]
-    df_out["tardiness_mip_post_tight_old"]    = tardiness_values
+    df_out["rank_dgsf_mip"] = [str(v) if v is not None else "" for v in rank_vectors]
+    df_out["tardiness_dgsf_mip"] = tardiness_values
     df_out.to_excel(args.output, index=False)
     print(f"Wrote results to: {args.output}")
