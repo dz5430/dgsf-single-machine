@@ -106,7 +106,7 @@ def process_excel_file(input_file, output_file):
             out_rows.append(entry)
 
         except Exception as e:
-            print(f"❌ Error at instance {idx+1}: {e}")
+            print(f"Error at instance {idx+1}: {e}")
             out_rows.append(row.to_dict())
 
     out_df = pd.DataFrame(out_rows)

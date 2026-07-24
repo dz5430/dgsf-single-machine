@@ -31,7 +31,7 @@ args = parser.parse_args()
 df = pd.read_excel(args.input)
 
 for k, (idx, row) in enumerate(df.iterrows(), start=1):
-    print(f"🔄 Solving instance {k}/{len(df)} (row {idx})...")
+    print(f"Solving instance {k}/{len(df)} (row {idx})...")
     try:
         I = int(row["I"])
         batch_list = [f"job{i+1}" for i in range(I)]
@@ -93,7 +93,7 @@ for k, (idx, row) in enumerate(df.iterrows(), start=1):
         print(f"Finished in {elapsed_time:.2f}s | {term_cond} | Tardiness = {tardiness_value:.4f}")
 
     except Exception as e:
-        print(f"❌ Error at instance {k}: {e}")
+        print(f"Error at instance {k}: {e}")
         # Keep alignment so we can save a complete table
         rank_vectors.append(None)
         start_time_vectors.append(None)
