@@ -174,7 +174,7 @@ class DeepSetsRanker(nn.Module):
             mask [B, N]     (1 = real, 0 = pad)
     Output: schedule_scores [B, N] (higher => earlier in schedule)
 
-    Architecture matches Dev3_30_theta_max_6Itau_50k_old_3_sp.pth:
+    Architecture for the legacy checkpoint family used by the original loader.
       embedding : Linear(input_size→hidden) → LayerNorm → GELU → Dropout
       encoder   : 2× ResidualBlock(hidden)  [hidden→2*hidden→hidden]
       attn_pool : MultiHeadAttentionPooling(hidden)

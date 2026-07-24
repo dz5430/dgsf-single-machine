@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pyomo.environ as pyo
 
-def time_indexed_single_machine_model(param_data, T):
+def time_indexed_single_machine_model(param_data, T, max_tard_mult=None):
     model = pyo.ConcreteModel()
 
     batch_list = list(param_data.keys())
@@ -48,6 +48,17 @@ def time_indexed_single_machine_model(param_data, T):
     def tardiness_def(model, i):
         return model.Tardiness[i] >= model.S[i] + model.tau[i] - model.eps[i]
     model.tardiness_def = pyo.Constraint(model.Batches, rule=tardiness_def)
+
+    # Optional diagnostic constraint used for the max-tardiness sensitivity
+    # experiment.  Leaving ``max_tard_mult`` unset preserves the original
+    # total-tardiness reference formulation.
+    if max_tard_mult is not None:
+        tau_avg = sum(float(param_data[b]["tau"]) for b in batch_list) / len(batch_list)
+
+        def max_tardiness_cap(model, i):
+            return model.Tardiness[i] <= max_tard_mult * tau_avg
+
+        model.max_tardiness_cap = pyo.Constraint(model.Batches, rule=max_tardiness_cap)
 
     # Objective: Minimize total tardiness
     model.obj = pyo.Objective(expr=sum(model.Tardiness[i] for i in model.Batches), sense=pyo.minimize)

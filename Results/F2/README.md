@@ -1,3 +1,4 @@
 # F2 Results
 
-Place downloaded F2 experiment outputs here.
+Mirror the Drive `Results/F2/` folder here, including its `input/` and
+`output/` subfolders.

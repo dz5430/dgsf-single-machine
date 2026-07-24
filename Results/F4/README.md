@@ -1,3 +1,4 @@
 # F4 Results
 
-Place downloaded F4 experiment outputs here.
+Mirror the Drive `Results/F4/` folder here, including its `input/` and
+`output/` subfolders.

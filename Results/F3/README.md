@@ -1,3 +1,4 @@
 # F3 Results
 
-Place downloaded F3 experiment outputs here.
+Mirror the Drive `Results/F3/` folder here, including its `input/` and
+`output/` subfolders.

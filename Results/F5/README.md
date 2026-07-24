@@ -1,3 +1,4 @@
 # F5 Results
 
-Place downloaded F5 experiment outputs here.
+Mirror the Drive `Results/F5/` folder here, including its `input/` and
+`output/` subfolders.

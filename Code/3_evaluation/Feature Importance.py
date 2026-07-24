@@ -1,231 +1,199 @@
-# -*- coding: utf-8 -*-
-import pandas as pd
-import numpy as np
+"""Permutation importance for a trained DGSF single-machine ranker.
+
+The model class and feature list are imported from the training script supplied
+on the command line.  This avoids duplicating a neural-network architecture in
+the evaluator and keeps the analysis tied to the checkpoint being studied.
+"""
+
+from __future__ import annotations
+
+import argparse
 import ast
+import importlib.util
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
 import torch
-import torch.nn as nn
-from sklearn.preprocessing import StandardScaler
 from scipy.stats import spearmanr
-import math
-import random
 
-# =========================
-# Config
-# =========================
-MODEL_PATH = "Chosen_model.pth"   # Update with own file
-DATA_PATH  = "DGSF_processed_file.xlsx"  # Update with own file
 
-# Chosen input features
-input_feature_cols = [
-    "rel_proc_time",
-    "window_tightness_jobs",
-    "slack_time",
-    "release_percentile",
-    "due_percentile",
-    "atc_t0_rank",
-    "atc_at_release_rank",
-    "load_before_due_norm",
-    "myopic_lateness"
-]
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Compute DGSF feature-permutation importance.")
+    parser.add_argument("--model-script", type=Path, required=True, help="Training script defining the model class.")
+    parser.add_argument("--model-class", default="SMSDev9LeanRanker", help="Class to import from --model-script.")
+    parser.add_argument("--type-a-data", type=Path, required=True)
+    parser.add_argument("--type-a-model", type=Path, required=True)
+    parser.add_argument("--type-b-data", type=Path, required=True)
+    parser.add_argument("--type-b-model", type=Path, required=True)
+    parser.add_argument("--output-csv", type=Path, required=True)
+    parser.add_argument("--output-xlsx", type=Path, required=True)
+    parser.add_argument("--repeats", type=int, default=5, help="Within-instance shuffles per feature.")
+    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
+    parser.add_argument("--heads", type=int, default=8, help="Attention-head count used by the checkpoint.")
+    return parser.parse_args()
 
-input_size = len(input_feature_cols)
 
-# =============================
-# Model: DeepSetsRanker
-# =============================
-# Residual block
-class ResidualBlock(nn.Module):
-    def __init__(self, dim: int, dropout: float = 0.2):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(dim, dim * 2),
-            nn.LayerNorm(dim * 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(dim * 2, dim),
-            nn.LayerNorm(dim),
-            nn.Dropout(dropout),
+def import_module(path: Path) -> Any:
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot import model definition from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def read_table(path: Path) -> pd.DataFrame:
+    if path.suffix.lower() in {".xlsx", ".xls"}:
+        return pd.read_excel(path)
+    return pd.read_csv(path)
+
+
+def parse_array(value: object) -> np.ndarray:
+    if isinstance(value, str):
+        value = ast.literal_eval(value)
+    return np.asarray(value, dtype=np.float32).reshape(-1)
+
+
+def load_checkpoint(path: Path, device: torch.device) -> dict[str, Any]:
+    try:
+        checkpoint = torch.load(path, map_location=device, weights_only=True)
+    except TypeError:
+        checkpoint = torch.load(path, map_location=device)
+    if not isinstance(checkpoint, dict):
+        raise ValueError(f"Unsupported checkpoint format in {path}")
+    return checkpoint
+
+
+def build_model(module: Any, class_name: str, checkpoint: Path, feature_cols: list[str], heads: int,
+                device: torch.device) -> torch.nn.Module:
+    model_cls = getattr(module, class_name, None)
+    if model_cls is None:
+        raise AttributeError(f"{checkpoint.name}: {class_name} is not defined in the supplied model script.")
+    checkpoint_data = load_checkpoint(checkpoint, device)
+    state = checkpoint_data.get("model_state_dict", checkpoint_data.get("state_dict", checkpoint_data))
+    if not isinstance(state, dict):
+        raise ValueError(f"Unsupported model state in {checkpoint}")
+    input_weight = state.get("job_enc.phi.0.weight")
+    if input_weight is None:
+        raise KeyError(f"{checkpoint.name}: cannot infer input size from job_enc.phi.0.weight")
+    hidden, input_size = input_weight.shape
+    if input_size != len(feature_cols):
+        raise ValueError(
+            f"{checkpoint.name}: checkpoint expects {input_size} features, but the imported model defines "
+            f"{len(feature_cols)}."
         )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.net(x)
-
-class MultiHeadAttentionPooling(nn.Module):
-    def __init__(self, dim: int, num_heads: int = 4):
-        super().__init__()
-        assert dim % num_heads == 0, "hidden_size must be divisible by num_heads"
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-
-        self.q_proj = nn.Linear(dim, dim)
-        self.k_proj = nn.Linear(dim, dim)
-        self.v_proj = nn.Linear(dim, dim)
-        self.out_proj = nn.Linear(dim, dim)
-
-    def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
-        """
-        x:    [B, N, D]
-        mask: [B, N] with 1 for real jobs, 0 for pad
-        returns pooled: [B, D] (permutation-invariant)
-        """
-        B, N, D = x.shape
-        q = self.q_proj(x).view(B, N, self.num_heads, self.head_dim).transpose(1, 2)  # [B,H,N,hd]
-        k = self.k_proj(x).view(B, N, self.num_heads, self.head_dim).transpose(1, 2)  # [B,H,N,hd]
-        v = self.v_proj(x).view(B, N, self.num_heads, self.head_dim).transpose(1, 2)  # [B,H,N,hd]
-
-        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)      # [B,H,N,N]
-        if mask is not None:
-            m = mask.unsqueeze(1).unsqueeze(2)  # [B,1,1,N]
-            scores = scores.masked_fill(m == 0, -1e9)
-
-        attn = torch.softmax(scores, dim=-1)                                         # [B,H,N,N]
-        out = torch.matmul(attn, v)                                                  # [B,H,N,hd]
-        out = out.transpose(1, 2).contiguous().view(B, N, D)                         # [B,N,D]
-        out = self.out_proj(out)                                                     # [B,N,D]
-
-        # permutation-invariant pooling over the set (mask pads)
-        if mask is None:
-            return out.mean(dim=1)                                                   # [B,D]
-        denom = mask.sum(dim=1, keepdim=True).clamp_min(1.0)                         # [B,1]
-        return (out * mask.unsqueeze(-1)).sum(dim=1) / denom                         # [B,D]
+    checkpoint_features = checkpoint_data.get("feature_cols")
+    if checkpoint_features is not None and list(checkpoint_features) != feature_cols:
+        raise ValueError(f"{checkpoint.name}: imported feature list differs from checkpoint metadata.")
+    kwargs = dict(checkpoint_data.get("model_kwargs", {}))
+    kwargs.setdefault("job_in", input_size)
+    kwargs.setdefault("hidden", hidden)
+    kwargs.setdefault("dropout", 0.0)
+    kwargs.setdefault("heads", heads)
+    model = model_cls(**kwargs)
+    model.load_state_dict(state, strict=True)
+    model.to(device).eval()
+    return model
 
 
-class DeepSetsRanker(nn.Module):
-    """
-    Input:  x    [B, N, F]  (per-job features)
-            mask [B, N]     (1 = real, 0 = pad)
-    Output: schedule_scores [B, N] (higher => earlier in schedule)
+def prepare_instances(df: pd.DataFrame, feature_cols: list[str]) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    missing = [column for column in feature_cols + ["rank_vector_dtime"] if column not in df.columns]
+    if missing:
+        raise KeyError(f"Data are missing required columns: {missing}")
+    inputs, reference_ranks = [], []
+    for row_index, row in df.iterrows():
+        x = np.column_stack([parse_array(row[column]) for column in feature_cols]).astype(np.float32)
+        ranks = parse_array(row["rank_vector_dtime"])
+        if x.shape[0] != len(ranks):
+            raise ValueError(f"Row {row_index}: feature and rank-vector lengths do not agree.")
+        x = (x - x.mean(axis=0, keepdims=True)) / (x.std(axis=0, keepdims=True) + 1e-8)
+        inputs.append(x)
+        reference_ranks.append(ranks)
+    return inputs, reference_ranks
 
-    Architecture matches Dev3_30_theta_max_6Itau_50k_old_3_sp.pth:
-      embedding : Linear(input_size→hidden) → LayerNorm → GELU → Dropout
-      encoder   : 2× ResidualBlock(hidden)  [hidden→2*hidden→hidden]
-      attn_pool : MultiHeadAttentionPooling(hidden)
-      rank_head : Linear(hidden→1)
-    """
-    def __init__(self, input_size: int, hidden_size: int = 128, dropout: float = 0.3, num_heads: int = 4):
-        super().__init__()
-        assert hidden_size % num_heads == 0, "hidden_size must be divisible by num_heads"
 
-        # φ: per-item embedding (permutation-equivariant)
-        self.embedding = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.LayerNorm(hidden_size),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
-
-        # deeper φ via residual blocks
-        self.encoder = nn.Sequential(
-            ResidualBlock(hidden_size, dropout),
-            ResidualBlock(hidden_size, dropout),
-        )
-
-        # attention pooling to get a global context
-        self.attn_pool = MultiHeadAttentionPooling(hidden_size, num_heads=num_heads)
-
-        # per-item scorer
-        self.rank_head = nn.Linear(hidden_size, 1)
-
-    def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> dict:
-        h = self.embedding(x)            # [B,N,H]
-        h = self.encoder(h)              # [B,N,H]
-
-        g = self.attn_pool(h, mask)      # [B,H] (invariant)
-        g = g.unsqueeze(1).expand_as(h)  # [B,N,H] broadcast global context
-
-        h = h + g                        # context injection (equivariant)
-        scores = self.rank_head(h).squeeze(-1)  # [B,N]
-
-        # mask out pads so they won't affect losses downstream
-        if mask is not None:
-            scores = scores.masked_fill(mask == 0, float("-inf"))
-
-        return {"schedule_scores": scores}
-
-# =========================
-# Utilities
-# =========================
-def set_seed(seed=42):
-    random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
-
-def spearman_safe(a, b):
-    val = spearmanr(a, b).correlation
-    return np.nan if val is None else val
-
-def predict_scores(model, feat_tensor):
-    # feat_tensor: (N, F) -> returns numpy (N,)
+def predict(model: torch.nn.Module, x: np.ndarray, device: torch.device) -> np.ndarray:
+    features = torch.tensor(x, dtype=torch.float32, device=device).unsqueeze(0)
+    mask = torch.ones((1, x.shape[0]), dtype=torch.float32, device=device)
     with torch.no_grad():
-        out = model(feat_tensor.unsqueeze(0))  # (1, N, F)
-        scores = out["schedule_scores"].squeeze(0).cpu().numpy()
-    return scores
+        output = model(features, mask)
+    scores = output["schedule_scores"] if isinstance(output, dict) else output
+    return scores.squeeze(0).detach().cpu().numpy()
 
-# =========================
-# Load data (per-instance scaling)
-# =========================
-def load_instances(df, feature_cols):
-    X_list, y_list, names = [], [], []
-    for idx, row in df.iterrows():
-        try:
-            feats = []
-            for col in feature_cols:
-                feats.append(np.array(ast.literal_eval(str(row[col]))).reshape(-1, 1))
-            X = np.concatenate(feats, axis=1)
-            X = StandardScaler().fit_transform(X)        # per-instance scale
 
-            ranks = np.array(ast.literal_eval(str(row["rank_vector_dtime"])))  # target ranks
-            X_list.append(torch.tensor(X, dtype=torch.float32))
-            y_list.append(ranks)
-            names.append(idx)
-        except Exception as e:
-            print(f"⚠️ Skipping row {idx} due to parse error: {e}")
-    return X_list, y_list, names
+def spearman_to_reference(scores: np.ndarray, ranks: np.ndarray) -> float:
+    value = spearmanr(-scores, ranks).correlation
+    return float(value) if value is not None else float("nan")
 
-# =========================
-# Main
-# =========================
+
+def run_family(label: str, data_path: Path, model_path: Path, module: Any, args: argparse.Namespace,
+               feature_cols: list[str], device: torch.device, seed_offset: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    model = build_model(module, args.model_class, model_path, feature_cols, args.heads, device)
+    inputs, ranks = prepare_instances(read_table(data_path), feature_cols)
+    baseline_scores = [predict(model, x, device) for x in inputs]
+    baseline_rhos = np.asarray([spearman_to_reference(scores, target) for scores, target in zip(baseline_scores, ranks)])
+    baseline = float(np.nanmean(baseline_rhos))
+    if not np.isfinite(baseline) or baseline == 0.0:
+        raise ValueError(f"{label}: invalid baseline Spearman value {baseline}.")
+
+    rng = np.random.default_rng(args.seed + seed_offset)
+    rows = []
+    for feature_index, feature in enumerate(feature_cols):
+        repeat_rhos = []
+        for _ in range(args.repeats):
+            perturbed = []
+            for x, target in zip(inputs, ranks):
+                shuffled = x.copy()
+                shuffled[:, feature_index] = shuffled[rng.permutation(len(shuffled)), feature_index]
+                perturbed.append(spearman_to_reference(predict(model, shuffled, device), target))
+            repeat_rhos.append(float(np.nanmean(perturbed)))
+        drops = 100.0 * (baseline - np.asarray(repeat_rhos)) / abs(baseline)
+        rows.append(
+            {
+                "type": label,
+                "instances": len(inputs),
+                "feature": feature,
+                "baseline_spearman": baseline,
+                "perturbed_spearman_mean": float(np.mean(repeat_rhos)),
+                "importance_drop_percent_mean": float(np.mean(drops)),
+                "importance_drop_percent_std": float(np.std(drops, ddof=1)),
+                "repeats": args.repeats,
+                "model_file": model_path.name,
+                "data_file": data_path.name,
+            }
+        )
+    importance = pd.DataFrame(rows).sort_values("importance_drop_percent_mean", ascending=False)
+    per_instance = pd.DataFrame({"type": label, "instance": np.arange(len(inputs)), "baseline_spearman": baseline_rhos})
+    return importance, per_instance
+
+
+def main() -> None:
+    args = parse_args()
+    if args.repeats < 2:
+        raise ValueError("--repeats must be at least 2 to report a standard deviation.")
+    device = torch.device(args.device if args.device == "cpu" or torch.cuda.is_available() else "cpu")
+    module = import_module(args.model_script)
+    feature_cols = list(getattr(module, "SMS_FEATURE_COLS"))
+    type_a, type_a_instances = run_family("Type A", args.type_a_data, args.type_a_model, module, args,
+                                          feature_cols, device, seed_offset=0)
+    type_b, type_b_instances = run_family("Type B", args.type_b_data, args.type_b_model, module, args,
+                                          feature_cols, device, seed_offset=10_000)
+    importance = pd.concat([type_a, type_b], ignore_index=True)
+    per_instance = pd.concat([type_a_instances, type_b_instances], ignore_index=True)
+
+    args.output_csv.parent.mkdir(parents=True, exist_ok=True)
+    args.output_xlsx.parent.mkdir(parents=True, exist_ok=True)
+    importance.to_csv(args.output_csv, index=False, float_format="%.6f")
+    with pd.ExcelWriter(args.output_xlsx, engine="openpyxl") as writer:
+        importance.to_excel(writer, sheet_name="Importance", index=False)
+        per_instance.to_excel(writer, sheet_name="Instance Spearman", index=False)
+    print(importance.to_string(index=False))
+    print(f"Wrote {args.output_csv}")
+    print(f"Wrote {args.output_xlsx}")
+
+
 if __name__ == "__main__":
-    set_seed(123)
-
-    # Load model
-    device = torch.device("cuda")
-    model = DeepSetsRanker(input_size=input_size, hidden_size=128, dropout=0.3)
-    state = torch.load(MODEL_PATH, map_location=device)
-    model.load_state_dict(state)
-    model.to(device)
-    model.eval()
-
-    # Load data
-    df = pd.read_excel(DATA_PATH)
-    X_all, y_all, _ = load_instances(df, input_feature_cols)
-
-    # Baseline predictions & Spearman
-    baseline_preds = [predict_scores(model, x.to(device)) for x in X_all]
-    baseline_rhos = [spearman_safe(-p, t) for p, t in zip(baseline_preds, y_all)]
-    baseline_perf = np.nanmean(baseline_rhos)
-    print(f"Baseline Spearman ρ (mean across instances): {baseline_perf:.4f}")
-
-    # Permutation importance (percent drop in ρ)
-    n_repeats = 5  # increase to 10+ for more stable estimates
-    importances = []
-
-    for f_idx, col in enumerate(input_feature_cols):
-        drops = []
-        for _ in range(n_repeats):
-            perturbed_preds = []
-            for x in X_all:
-                x_pert = x.clone()
-                # permute feature within the instance (keeps marginal distribution)
-                idx_perm = torch.randperm(x_pert.size(0))
-                x_pert[:, f_idx] = x_pert[idx_perm, f_idx]
-                perturbed_preds.append(predict_scores(model, x_pert.to(device)))
-            perf = np.nanmean([spearman_safe(-p, t) for p, t in zip(perturbed_preds, y_all)])
-            drop = 0.0 if (baseline_perf is None or np.isnan(baseline_perf) or baseline_perf == 0) else \
-                   100.0 * (baseline_perf - perf) / abs(baseline_perf)
-            drops.append(drop)
-        importances.append((col, np.mean(drops), np.std(drops)))
-
-    # Report
-    importances.sort(key=lambda x: x[1], reverse=True)
-    print("\n--- Feature Importance by % Spearman ρ Drop (mean ± std over repeats) ---")
-    for col, mean_drop, std_drop in importances:
-        print(f"{col:<24} {mean_drop:6.2f}%  ± {std_drop:5.2f}%")
+    main()

@@ -15,17 +15,19 @@ with local swap refinement and continuous-time MIP post-processing.
   and continuous-time MIP post-processing.
 - `Code/3_evaluation/`: dispatching-rule baselines, schedule evaluation, and
   feature-importance analysis.
-- `Data/`: small product tables plus downloaded training/test artifacts and
-  trained model checkpoints.
-- `Results/`: downloaded or regenerated experiment outputs.
+- `Data/`: product tables plus downloaded training/test artifacts and model
+  checkpoints from the Google Drive bundle.
+- `Results/`: downloaded or regenerated experiment outputs, arranged to mirror
+  the Google Drive bundle (`Tables/`, `F1/`, `F2/`, `F3/`, `F4/`, and `F5/`).
 - `environment.yml`: conda environment used for the reproducibility workflow.
 - `REPRODUCIBILITY.md`: step-by-step setup and command-line workflow.
 - `docs/google_drive_manifest.md`: expected external artifacts and where to
   place them.
 
-Large `.xlsx`, `.csv`, and `.pth` artifacts are not committed. Download them
-from the project Google Drive folder and place them in `Data/` and `Results/`
-as described in `docs/google_drive_manifest.md`.
+Large `.xlsx`, `.csv`, and `.pth` artifacts are not committed. Download the
+contents of the project Google Drive folder, preserving its folder structure,
+and merge them into this repository. The exact layout and current filenames
+are listed in `docs/google_drive_manifest.md`.
 
 Google Drive:
 https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
@@ -63,11 +65,26 @@ Data/
     Facility Products/
     Trained Models/
 Results/
+    Tables/
     F1/
+        input/
+        output/
+            F1_DGSF/
+            F1_Recursive/
+            Time resolution/
+        Max Tardiness Evaluation/
     F2/
+        input/
+        output/
     F3/
+        input/
+        output/
     F4/
+        input/
+        output/
     F5/
+        input/
+        output/
 ```
 
 The expected filenames are listed in `docs/google_drive_manifest.md`.
@@ -76,21 +93,23 @@ The expected filenames are listed in `docs/google_drive_manifest.md`.
 
 The scripts can be run from the repository root.
 
-Run a pretrained DeepSets model with local-swap refinement:
+Run the archived Dev9-lean model with local-swap refinement:
 
 ```bash
-python Code/2_dgsf_main/Load_ML_swap.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
-  --model "Data/Trained Models/Dev3_30_theta_max_6Itau.pth" \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx
+python Code/2_dgsf_main/evaluate_sms_model.py \
+  --input Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --model "Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth" \
+  --architecture dev9_lean \
+  --device cpu \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx
 ```
 
 Run continuous-time MIP post-processing:
 
 ```bash
 python Code/2_dgsf_main/Solver_MIP_ct_post.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
   --time-limit 60
 ```
 
@@ -98,10 +117,10 @@ Evaluate a schedule against the reference solution:
 
 ```bash
 python Code/3_evaluation/Schedule_evaluation.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
-  --method-obj-col tardiness_mip_post \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
+  --method-obj-col tardiness_mip_post_tight_old \
   --ref-obj-col tardiness_dtime \
-  --pred-rank-col rank_mip_post \
+  --pred-rank-col rank_mip_post_tight_old \
   --ref-rank-col rank_vector_dtime
 ```
 
@@ -109,8 +128,8 @@ Evaluate static dispatching-rule baselines:
 
 ```bash
 python Code/3_evaluation/Dispatching_heuristics.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_heuristics.xlsx
+  --input Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --output Results/F1/output/F1_Recursive/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_heuristics.xlsx
 ```
 
 ## Metric

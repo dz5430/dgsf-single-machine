@@ -1,7 +1,9 @@
 # Reproducibility Guide
 
 This guide describes how to reproduce the single-machine DGSF workflow from a
-fresh clone after downloading the external data/model artifacts.
+fresh clone after downloading the current Google Drive artifact bundle. The
+Drive folder is organized to merge directly into the repository; preserve its
+`Data/` and `Results/` subfolders when downloading.
 
 ## 1. Clone the Repository
 
@@ -37,34 +39,37 @@ The command should print `True`.
 
 ## 3. Download and Place External Artifacts
 
-Large experiment artifacts are stored outside git. Download the artifact bundle
-from the project Google Drive folder, then place files under the paths listed in
-`docs/google_drive_manifest.md`.
+Large experiment artifacts are stored outside git. Download the complete
+artifact bundle from the project Google Drive folder and merge it into the
+repository root, preserving the Drive folder structure. The exact current
+paths are listed in `docs/google_drive_manifest.md`.
 
 Google Drive:
 https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
-At minimum, a reproduced pretrained-model run needs:
+At minimum, the pretrained-model example needs:
 
 ```text
-Data/Trained Models/Dev3_30_theta_max_6Itau.pth
-Data/Trained Models/Dev3_30_theta_0max_40tau_avg.pth
-Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx
+Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth
+Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx
 ```
 
-## 4. Run a Pretrained DGSF Model
+## 4. Run the Archived Dev9-Lean DGSF Model
 
 Run model inference and local-swap refinement:
 
 ```bash
-python Code/2_dgsf_main/Load_ML_swap.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
-  --model "Data/Trained Models/Dev3_30_theta_max_6Itau.pth" \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx
+python Code/2_dgsf_main/evaluate_sms_model.py \
+  --input Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --model "Data/Trained Models/30_theta_max_6Itau_Dev3_50k_dev9_lean.pth" \
+  --architecture dev9_lean \
+  --device cpu \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx
 ```
 
 The output workbook contains the predicted ML rank vector, ML tardiness, local
-swap rank vector, and local swap tardiness.
+swap rank vector, and local swap tardiness. The output path matches the Drive
+`Results/F1/output/F1_DGSF/` folder.
 
 ## 5. Run MIP Post-Processing
 
@@ -73,21 +78,22 @@ MIP postprocessor:
 
 ```bash
 python Code/2_dgsf_main/Solver_MIP_ct_post.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_ml_swap.xlsx \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML.xlsx \
+  --output Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
   --time-limit 60
 ```
 
-The output workbook adds `rank_mip_post` and `tardiness_mip_post`.
+The output workbook adds the continuous-time MIP rank, tardiness, solve-time,
+and termination columns used by the evaluation script.
 
 ## 6. Evaluate Gaps and Rank Similarity
 
 ```bash
 python Code/3_evaluation/Schedule_evaluation.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_mip_post.xlsx \
-  --method-obj-col tardiness_mip_post \
+  --input Results/F1/output/F1_DGSF/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_newML_mip.xlsx \
+  --method-obj-col tardiness_mip_post_tight_old \
   --ref-obj-col tardiness_dtime \
-  --pred-rank-col rank_mip_post \
+  --pred-rank-col rank_mip_post_tight_old \
   --ref-rank-col rank_vector_dtime
 ```
 
@@ -101,8 +107,8 @@ gap (%) = 100 * (TT_method - TT_opt) / TT_opt
 
 ```bash
 python Code/3_evaluation/Dispatching_heuristics.py \
-  --input Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
-  --output Results/F1/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_heuristics.xlsx
+  --input Results/F1/input/Dev3_singlemachine_instances_100_theta_max_6Itau_u4.xlsx \
+  --output Results/F1/output/F1_Recursive/Dev3_singlemachine_instances_100_theta_max_6Itau_u4_heuristics.xlsx
 ```
 
 This script computes static/global EDD, SPT, LSF, ATC, and PRTT priority-rule
@@ -115,16 +121,16 @@ If starting from raw generated instances, first construct the ML input features:
 
 ```bash
 python Code/1_data_processing/Update_input_features.py \
-  --input Data/Raw_file.xlsx \
-  --output Data/Updated_file.xlsx
+  --input Results/F1/input/Raw_file.xlsx \
+  --output Results/F1/input/Updated_file.xlsx
 ```
 
 Reference solutions can be generated with the time-indexed MIP:
 
 ```bash
 python Code/1_data_processing/Solver_discrete_time.py \
-  --input Data/Updated_file.xlsx \
-  --output Results/Updated_file_with_reference.xlsx
+  --input Results/F1/input/Updated_file.xlsx \
+  --output Results/F1/output/F1_DGSF/Updated_file_with_reference.xlsx
 ```
 
 ## 9. Optional Retraining
@@ -149,3 +155,23 @@ For manuscript reproducibility, archive the final GitHub release through Zenodo
 or an equivalent DOI-minting archive and cite the DOI-linked release in the
 revised manuscript. Record the exact git commit hash associated with the
 archived release.
+
+## 11. Reproduce the Max-Tardiness Diagnostic
+
+The two diagnostic workbooks are in the Drive folder
+`Results/F1/Max Tardiness Evaluation/`. The capped workbook's stored
+`new_rank_swap` column is the sequence produced by the DGSF local-swap step.
+The following command recreates the capped time-indexed MIP references and
+capped DGSF post-processing solutions for threshold multipliers 10, 12, and
+15:
+
+```bash
+python Code/3_evaluation/Max_tardiness_diagnostic.py \
+  --input "Results/F1/Max Tardiness Evaluation/Table6_capped_d6_t120.xlsx" \
+  --output "Results/F1/Max Tardiness Evaluation/Table6_capped_d6_t120_recreated.xlsx" \
+  --quiet
+```
+
+The script is deliberately fixed to the paper configuration: rank window
+`delta = 6` and a 120-second MIP post-processing limit. The unconstrained
+baseline is retained in the supplied workbook.
