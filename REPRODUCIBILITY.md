@@ -115,9 +115,12 @@ This script computes static/global EDD, SPT, LSF, ATC, and PRTT priority-rule
 baselines. The revised manuscript distinguishes these static priority baselines
 from recursive dispatching-rule baselines.
 
-## 8. Generate Features or Reference Solutions
+## 8. Generate Features or Reference Solutions for New Instance Types
 
-If starting from raw generated instances, first construct the ML input features:
+This preprocessing is required when training or evaluating a new instance type
+from raw generated instances. It is not required to reproduce the frozen
+manuscript tables if the processed workbooks from Google Drive are downloaded.
+First construct the ML input features:
 
 ```bash
 python Code/1_data_processing/Update_input_features.py \
@@ -133,30 +136,31 @@ python Code/1_data_processing/Solver_discrete_time.py \
   --output Results/F1/output/F1_DGSF/Updated_file_with_reference.xlsx
 ```
 
-## 9. Optional Retraining
+## 9. Train on a New Instance Type
 
-Training requires a solved training file with all per-job features and reference
-rank vectors.
+Training is optional for reproducing the manuscript, but is the standard path
+for adding a new instance type. Prepare a solved training table containing the
+per-job feature columns, `rank_vector_dtime`, `tau`, `eps`, `rho`, and
+`tardiness_dtime`. The table may be CSV or Excel; pass its path with `--input`.
+
+After generating features and reference solutions as in Section 8, train the
+current Dev9-Lean model:
 
 ```bash
-python Code/2_dgsf_main/DeepSets_SMS_Scheduling_training.py \
-  --input Data/Training_file.csv \
-  --output-model "Data/Trained Models/Model_name.pth" \
-  --loss-plot Results/loss_curves.png \
+python Code/2_dgsf_main/DeepSets_SMS_Scheduling_training_dev9_lean.py \
+  --input Data/<instance_type>_train.csv \
+  --output-model "Data/Trained Models/<instance_type>_dev9_lean.pth" \
+  --metrics-csv Data/<instance_type>_dev9_lean_metrics.csv \
+  --loss-plot Data/<instance_type>_dev9_lean_loss.png \
   --device cuda \
   --epochs 1000
 ```
 
-Use `--device cpu` if CUDA is unavailable.
+Use `--device cpu` if CUDA is unavailable. Use the resulting checkpoint with
+`evaluate_sms_model.py` as in Section 4, replacing the input workbook and model
+paths for the new instance type.
 
-## 10. Code Archive
-
-For manuscript reproducibility, archive the final GitHub release through Zenodo
-or an equivalent DOI-minting archive and cite the DOI-linked release in the
-revised manuscript. Record the exact git commit hash associated with the
-archived release.
-
-## 11. Reproduce the Max-Tardiness Diagnostic
+## 10. Reproduce the Max-Tardiness Diagnostic
 
 The two diagnostic workbooks are in the Drive folder
 `Results/F1/Max Tardiness Evaluation/`. The capped workbook's stored
