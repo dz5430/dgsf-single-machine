@@ -1,5 +1,7 @@
 # Data Files
 
+This directory layout is part of the production-ready `v1.0.0` release.
+
 This folder stores input datasets and trained model checkpoints used by the
 single-machine DGSF workflow.
 

@@ -3,6 +3,12 @@
 Code and reproducibility materials for the DeepSets-Guided Scheduling Framework
 (DGSF) experiments on the single-machine total tardiness problem.
 
+## Release
+
+This is the production-ready `v1.0.0` reproducibility release. The release tag
+identifies the complete code and documentation snapshot used for the public
+artifact package.
+
 The model predicts a static job-priority vector for a non-preemptive
 single-machine scheduling instance. The predicted sequence can then be improved
 with local swap refinement and continuous-time MIP post-processing.

@@ -1,5 +1,7 @@
 # External Artifact Manifest
 
+This manifest accompanies the production-ready `v1.0.0` release.
+
 Large experiment artifacts are stored outside git. Download the complete data
 archive and merge it into the repository root, preserving the archive folder
 structure. The paths below are the expected artifact layout.

@@ -1,3 +1,4 @@
+# Local Python, model, and artifact files excluded from the v1.0.0 release.
 __pycache__/
 *.pyc
 *.pyo

@@ -1,3 +1,4 @@
+# Environment specification for the production-ready v1.0.0 release.
 name: scheduling_env
 channels:
   - pytorch

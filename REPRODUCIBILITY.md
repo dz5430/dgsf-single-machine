@@ -5,6 +5,8 @@ fresh clone after downloading the external data archive. The archive is
 organized to merge directly into the repository; preserve its `Data/` and
 `Results/` subfolders when downloading.
 
+This guide accompanies the production-ready `v1.0.0` release.
+
 ## 1. Clone the Repository
 
 ```bash
