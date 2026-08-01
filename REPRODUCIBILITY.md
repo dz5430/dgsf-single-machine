@@ -45,7 +45,7 @@ archive and merge it into the repository root, preserving the archive folder
 structure. The exact paths are listed in `docs/artifact_manifest.md`.
 
 Artifact archive:
-https://drive.google.com/drive/u/2/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
+https://drive.google.com/drive/folders/1Lo8WRZabBUxGNA0nOD50TMavkKyhDwHP
 
 At minimum, the pretrained-model example needs:
 
